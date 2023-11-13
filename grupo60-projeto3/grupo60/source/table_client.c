@@ -56,13 +56,13 @@ int main(int argc, char **argv) {
 
         command[strlen(command) - 1] = '\0';  // Remove a quebra de linha
 
-        if (strcmp(command, "quit") == 0 || strncmp(command, "q", 1) == 0) {
+        if (strcmp(command, "quit") || strcmp(command, "q")) {
             printf("Bye, bye!\n");
             rtable_disconnect(rtable);
             return -1;  
         } 
 
-        else if (strncmp(command, "put", 3) == 0 || strncmp(command, "p", 1) == 0) {
+        else if (strcmp(command, "put")|| strcmp(command, "p")) {
 
             char *key = strtok(command + 4, " ");
             char *data = strtok(NULL, "");
@@ -91,7 +91,8 @@ int main(int argc, char **argv) {
                 fprintf(stderr, "Invalid arguments. Usage: put <key> <value>\n");
         }
 
-        else if (strncmp(command, "get", 3) == 0 || strncmp(command, "g", 1) == 0) {
+        else if (strcmp(command, "get") || strcmp(command, "g")) {
+            printf("getting the key\n");
 
             char *key = strtok(command + 4, "");
 
@@ -113,7 +114,7 @@ int main(int argc, char **argv) {
                 fprintf(stderr, "Invalid arguments. Usage: get <key>\n");
 
         } 
-        else if (strncmp(command, "del", 3) == 0 || strncmp(command, "d", 1) == 0) {
+        else if (strcmp(command, "del") || strcmp(command, "d")) {
 
             char *key = strtok(command + 4, "");
 
@@ -128,10 +129,10 @@ int main(int argc, char **argv) {
                 fprintf(stderr, "Invalid arguments. Usage: del <key>\n");
         } 
         
-        else if (strncmp(command, "size", 4) == 0 || strncmp(command, "s", 1) == 0) 
+        else if (strcmp(command, "size") || strcmp(command, "s")) 
             printf("Table size: %d\n", rtable_size(rtable));
 
-        else if (strncmp(command, "getkeys", 7) == 0 || strncmp(command, "k", 1) == 0) {
+        else if (strcmp(command, "getkeys") || strcmp(command, "k")) {
 
             char **keys = rtable_get_keys(rtable);
 
@@ -146,7 +147,7 @@ int main(int argc, char **argv) {
                 fprintf(stderr, "Error in rtable_get_keys\n");
         } 
 
-        else if (strncmp(command, "gettable", 8) == 0 || strncmp(command, "t", 1) == 0) {
+        else if (strcmp(command, "gettable") || strcmp(command, "t")) {
 
             struct entry_t **entries = rtable_get_table(rtable);
 
