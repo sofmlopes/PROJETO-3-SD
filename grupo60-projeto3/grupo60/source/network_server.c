@@ -11,6 +11,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <pthread.h>
 
 #include "network_server.h"
 #include "sdmessage.pb-c.h"
@@ -18,6 +19,10 @@
 #include "table_skel.h"
 #include "table.h"
 
+struct thread_parameters {
+	struct table_t *table;
+	int connsockfd;
+};
 
 /* Função para preparar um socket de receção de pedidos de ligação
  * num determinado porto.
@@ -64,6 +69,45 @@ int network_server_init(short port){
 
 }
 
+void *handle_client(void *params) {
+
+    struct thread_parameters *tp = (struct thread_parameters *) params;
+
+    while (1) { 
+                
+        //Receber uma mensagem usando a função network_receive
+        MessageT *msg = network_receive(tp->connsockfd);
+
+        if (msg == NULL) {
+            // perror("Erro ao receber mensagem do cliente");
+            close(tp->connsockfd);
+            printf("Server ready, waiting for connections\n");
+            break;
+        }
+
+        //Entregar a mensagem de-serializada ao skeleton para ser processada na tabela table
+        int result = invoke(msg, tp->table);
+
+        //Esperar a resposta do skeleton
+        if (result == -1) {
+            perror("Erro ao processar mensagem do cliente");
+            close(tp->connsockfd);
+            printf("Server ready, waiting for connections\n");
+            break;
+        }
+
+        //Enviar a resposta ao cliente usando a função network_send
+        if (network_send(tp->connsockfd, msg) == -1) {
+            perror("Erro ao enviar resposta ao cliente");
+            close(tp->connsockfd);
+            printf("Server ready, waiting for connections\n");
+            break;
+        }
+
+    }
+}
+
+
 /* A função network_main_loop() deve:
  * - Aceitar uma conexão de um cliente;
  * - Receber uma mensagem usando a função network_receive;
@@ -82,46 +126,23 @@ int network_main_loop(int listening_socket, struct table_t *table){
 
     printf("Server ready, waiting for connections\n");
 
-    //Aceitar uma conexão de um cliente
-    while ((connsockfd = accept(listening_socket,(struct sockaddr *) &client, &size_client)) != -1) {
-        printf("Client connection established\n");
+        //Aceitar uma conexão de um cliente
+        while ((connsockfd = accept(listening_socket,(struct sockaddr *) &client, &size_client)) != -1){
+                pthread_t thread_id;
+                int *i = malloc(sizeof(int));
+                *i = connsockfd;
 
-        while (1) { 
-            
-            //Receber uma mensagem usando a função network_receive
-            MessageT *msg = network_receive(connsockfd);
+                if(pthread_create(&thread_id, NULL, &handle_client, i) < 0){
+                    perror("could not create thread");
+                    free(i);
+                    return -1;
+                }
+                pthread_detach(thread_id);
 
-            if (msg == NULL) {
-                // perror("Erro ao receber mensagem do cliente");
-                close(connsockfd);
-                printf("Server ready, waiting for connections\n");
-                break;
-            }
-
-            //Entregar a mensagem de-serializada ao skeleton para ser processada na tabela table
-            int result = invoke(msg, table);
-
-            //Esperar a resposta do skeleton
-            if (result == -1) {
-                perror("Erro ao processar mensagem do cliente");
-                close(connsockfd);
-                printf("Server ready, waiting for connections\n");
-                break;
-            }
-
-            //Enviar a resposta ao cliente usando a função network_send
-            if (network_send(connsockfd, msg) == -1) {
-                perror("Erro ao enviar resposta ao cliente");
-                close(connsockfd);
-                printf("Server ready, waiting for connections\n");
-                break;
-            }
-
-        }
+                printf("Client connection established\n");
 
     }
 
-    
     // Fecha o socket do cliente
     close(connsockfd);
 
