@@ -73,7 +73,7 @@ void *handle_client(void *params) {
 
     struct thread_parameters *tp = (struct thread_parameters *) params;
 
-    while (1) { 
+    while (1) {
                 
         //Receber uma mensagem usando a função network_receive
         MessageT *msg = network_receive(tp->connsockfd);
@@ -118,38 +118,40 @@ void *handle_client(void *params) {
  * A função não deve retornar, a menos que ocorra algum erro. Nesse
  * caso retorna -1.
  */
-int network_main_loop(int listening_socket, struct table_t *table){
+int network_main_loop(int listening_socket, struct table_t *table) {
 
-    int connsockfd;
     struct sockaddr_in client;
     socklen_t size_client = sizeof(struct sockaddr_in);
 
     printf("Server ready, waiting for connections\n");
 
-        //Aceitar uma conexão de um cliente
-        while ((connsockfd = accept(listening_socket,(struct sockaddr *) &client, &size_client)) != -1){
-                pthread_t thread_id;
-                int *i = malloc(sizeof(int));
-                *i = connsockfd;
+    while (1) {
+        // Accept a connection from a client
+        int connsockfd = accept(listening_socket, (struct sockaddr*)&client, &size_client);
+        if (connsockfd == -1) {
+            perror("Error accepting connection");
+            return -1;
+        }
 
-                if(pthread_create(&thread_id, NULL, &handle_client, i) < 0){
-                    perror("could not create thread");
-                    free(i);
-                    return -1;
-                }
-                pthread_detach(thread_id);
+        printf("Client connection established\n");
 
-                printf("Client connection established\n");
+        // Create a thread to handle the client
+        pthread_t thread_id;
+        struct thread_parameters *tp = malloc(sizeof(struct thread_parameters));
+        tp->connsockfd = connsockfd;
+        tp->table = table;
 
-    }
+        if (pthread_create(&thread_id, NULL, &handle_client, tp) < 0) {
+            perror("Could not create thread");
+            free(tp);
+            return -1;
+        }
 
-    // Fecha o socket do cliente
-    close(connsockfd);
-
-    // Se o loop terminar (o que normalmente não deveria acontecer)
-    return -1;
-    
+    return 0;
+ 
+ }
 }
+
 
 /* A função network_receive() deve:
  * - Ler os bytes da rede, a partir do client_socket indicado;
