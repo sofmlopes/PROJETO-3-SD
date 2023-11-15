@@ -172,6 +172,8 @@ int main(int argc, char **argv) {
                 printf("Número de clientes atualmente ligados ao servidor: %d\n", stats->time);
 
             } 
+
+            stats_destroy(stats);
         } 
 
         else if (strncmp(command, "size", 4) == 0 || strncmp(command, "s", 1) == 0) 
