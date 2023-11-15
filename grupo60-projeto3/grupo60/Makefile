@@ -1,34 +1,59 @@
-INC_DIR = include
-SRC_DIR = source
-OBJ_DIR = object
-LIB_DIR = lib
 BIN_DIR = binary
+INC_DIR = include
+OBJ_DIR = object
+SRC_DIR = source
+LIB_DIR = lib
+DEP_DIR = dependencies
 
 CC = gcc
-CFLAGS = -Wall -g -I$(INC_DIR)
-LDFLAGS = -L$(LIB_DIR)
-LDLIBS = -ltable -lprotobuf-c
+CFLAGS = -Wall -MMD -MP -MF $(DEP_DIR)/$*.d -I $(INC_DIR) -g
+LIBFLAGS = -L$(LIB_DIR) -l:$(LIB).a -lprotobuf-c
+ARFLAGS = -rcs
 
-EXECS = table_client table_server
-LIB = libtable.a
+# Objetos para formar a biblioteca(nao sao para remover)
+LIB_OBJ = $(OBJ_DIR)/data.o $(OBJ_DIR)/entry.o $(OBJ_DIR)/list.o $(OBJ_DIR)/table.o
+# Objetos gerados
+TARGET_OBJ = $(filter-out $(LIB_OBJ), $(wildcard $(OBJ_DIR)/*.o))
 
-# Lista de todos os arquivos-fonte e objetos
-SRCS = $(wildcard $(SRC_DIR)/*.c)
-OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
+# Nome da biblioteca
+LIB = libtable
 
-all: $(EXECS)
+# Nome dos executaveis
+TABLE_CLIENT = $(BIN_DIR)/table_client
+TABLE_SERVER = $(BIN_DIR)/table_server
 
-$(LIB_DIR)/$(LIB): $(OBJS)
-	ar -rcs $@ $^
 
-table_client: $(OBJ_DIR)/table_client.o $(LIB_DIR)/$(LIB)
-	$(CC) -o $(BIN_DIR)/$@ $< $(LDFLAGS) $(LDLIBS)
+# Fontes e objetos do cliente
+CLIENT_SRC = $(SRC_DIR)/network_client.c $(SRC_DIR)/client_stub.c $(SRC_DIR)/sdmessage.pb-c.c $(SRC_DIR)/table_client.c $(SRC_DIR)/message.c $(SRC_DIR)/stats.c 
+CLIENT_OBJ = $(patsubst $(SRC_DIR)%.c,$(OBJ_DIR)%.o,$(CLIENT_SRC))
 
-table_server: $(OBJ_DIR)/table_server.o $(LIB_DIR)/$(LIB)
-	$(CC) -o $(BIN_DIR)/$@ $< $(LDFLAGS) $(LDLIBS)
+# Fontes e objetos do servidor
+SERVER_SRC = $(SRC_DIR)/network_server.c $(SRC_DIR)/table_skel.c $(SRC_DIR)/sdmessage.pb-c.c $(SRC_DIR)/table_server.c $(SRC_DIR)/message.c
+SERVER_OBJ = $(patsubst $(SRC_DIR)%.c,$(OBJ_DIR)%.o,$(SERVER_SRC))
 
+# Compilar tudo
+all: libtable table-client table-server
+
+# Compilacao biblioteca
+libtable: $(LIB_DIR)/$(LIB).a
+$(LIB_DIR)/$(LIB).a: $(LIB_OBJ)
+	ar $(ARFLAGS) $@ $^
+
+# Compilacao cliente
+table-client: libtable $(CLIENT_OBJ)
+	$(CC) $(CFLAGS) -o $(TABLE_CLIENT) $(CLIENT_OBJ) $(LIBFLAGS)
+
+# Compilacao servidor
+table-server: libtable $(SERVER_OBJ)
+	$(CC) $(CFLAGS) -o $(TABLE_SERVER) $(SERVER_OBJ) $(LIBFLAGS)
+
+# Compilar para objetos
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
+
+
+include $(wildcard $(DEP_DIR)/*.d)
+	
 clean:
-	rm -rf $(OBJ_DIR)/* $(BIN_DIR)/* $(LIB_DIR)/*
+	rm -rf $(TARGET_OBJ) $(BIN_DIR)/* $(LIB_DIR)/* $(DEP_DIR)/*

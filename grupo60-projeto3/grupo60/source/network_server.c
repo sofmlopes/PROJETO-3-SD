@@ -14,6 +14,7 @@
 
 #include "network_server.h"
 #include "sdmessage.pb-c.h"
+#include "message.h"
 #include "table_skel.h"
 #include "table.h"
 
@@ -35,8 +36,9 @@ int network_server_init(short port){
     }
 
     if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
-        perror("setsockopt");
-        exit(EXIT_FAILURE);
+        perror("Erro ao configurar opções do socket");
+        close(sockfd);
+        return -1;
     }
 
     // Preenche estrutura server para bind
@@ -52,7 +54,7 @@ int network_server_init(short port){
     };
 
     // Faz listen
-    if (listen(sockfd, 0) < 0){
+    if (listen(sockfd, 10) < 0){
         perror("Erro ao executar listen");
         close(sockfd);
         return -1;
@@ -76,50 +78,52 @@ int network_main_loop(int listening_socket, struct table_t *table){
 
     int connsockfd;
     struct sockaddr_in client;
-    socklen_t size_client;
+    socklen_t size_client = sizeof(struct sockaddr_in);
 
-    while (1) { 
+    printf("Server ready, waiting for connections\n");
 
-        printf("Server ready, waiting for connections");
+    //Aceitar uma conexão de um cliente
+    while ((connsockfd = accept(listening_socket,(struct sockaddr *) &client, &size_client)) != -1) {
+        printf("Client connection established\n");
 
-        //Aceitar uma conexão de um cliente
-        if ((connsockfd = accept(listening_socket,(struct sockaddr *) &client, &size_client))== -1) {
-            perror("Error in connect");
-            return -1;
+        while (1) { 
+            
+            //Receber uma mensagem usando a função network_receive
+            MessageT *msg = network_receive(connsockfd);
+
+            if (msg == NULL) {
+                // perror("Erro ao receber mensagem do cliente");
+                close(connsockfd);
+                printf("Server ready, waiting for connections\n");
+                break;
+            }
+
+            //Entregar a mensagem de-serializada ao skeleton para ser processada na tabela table
+            int result = invoke(msg, table);
+
+            //Esperar a resposta do skeleton
+            if (result == -1) {
+                perror("Erro ao processar mensagem do cliente");
+                close(connsockfd);
+                printf("Server ready, waiting for connections\n");
+                break;
+            }
+
+            //Enviar a resposta ao cliente usando a função network_send
+            if (network_send(connsockfd, msg) == -1) {
+                perror("Erro ao enviar resposta ao cliente");
+                close(connsockfd);
+                printf("Server ready, waiting for connections\n");
+                break;
+            }
+
         }
 
-        printf("Client connection established");
-
-    //fazer um while
-        //Receber uma mensagem usando a função network_receive
-        MessageT *msg = network_receive(connsockfd);
-
-        if (msg == NULL) {
-            perror("Erro ao receber mensagem do cliente");
-            close(connsockfd);
-            return -1;
-        }
-
-        //Entregar a mensagem de-serializada ao skeleton para ser processada na tabela table
-        int result = invoke(msg, table);
-
-        //Esperar a resposta do skeleton
-        if (result == -1) {
-            perror("Erro ao processar mensagem do cliente");
-            close(connsockfd);
-            return -1;
-        }
-
-        //Enviar a resposta ao cliente usando a função network_send
-        if (network_send(connsockfd, msg) == -1) {
-            perror("Erro ao enviar resposta ao cliente");
-            close(connsockfd);
-            return -1;
-        }
-
-        // Fecha o socket do cliente
-        close(connsockfd);
     }
+
+    
+    // Fecha o socket do cliente
+    close(connsockfd);
 
     // Se o loop terminar (o que normalmente não deveria acontecer)
     return -1;
@@ -136,8 +140,8 @@ MessageT *network_receive(int client_socket) {
 
     // Passo 1: Ler os 2 bytes iniciais (tamanho da mensagem)
     uint16_t message_size;
-    if (recv(client_socket, &message_size, sizeof(message_size), 0) < 0) {
-        perror("Erro ao receber tamanho da mensagem");
+    if (read_all(client_socket, (char *)&message_size, sizeof(message_size)) != sizeof(message_size)) {
+        // perror("Erro ao receber tamanho da mensagem");
         return NULL;
     }
 
@@ -153,8 +157,8 @@ MessageT *network_receive(int client_socket) {
 
     // Passo 3: Ler os bytes restantes da mensagem serializada
 
-    ssize_t bytes_received = recv(client_socket, serialized_message, message_size, 0);
-    if (bytes_received < 0) {
+    ssize_t bytes_received = read_all(client_socket, (char *)serialized_message, message_size);
+    if (bytes_received != message_size) {
         perror("Erro ao receber mensagem serializada");
         free(serialized_message);
         return NULL;
@@ -183,35 +187,46 @@ MessageT *network_receive(int client_socket) {
  * - Enviar a mensagem serializada, através do client_socket.
  * Retorna 0 (OK) ou -1 em caso de erro.
  */
-int network_send(int client_socket, MessageT *msg){
-
+int network_send(int client_socket, MessageT *msg) {
     if (client_socket == 0 || msg == NULL) 
         return -1;
 
     size_t len = message_t__get_packed_size(msg);
+    ssize_t bytes_sent;
 
+    // Convert the length to network byte order (big-endian)
+    uint16_t send_len = htons(len);
+
+    // Send the length of the message first
+    bytes_sent = write_all(client_socket, &send_len, sizeof(send_len));
+    if (bytes_sent != sizeof(send_len)) {
+        // Handle error if unable to send length
+        return -1;
+    }
+
+    // Serialize the message
     uint8_t *buf = malloc(len);
-
     if (buf == NULL) 
         return -1;
 
-    if(message_t__pack(msg, buf)==-1){
+    if (message_t__pack(msg, buf) == -1) {
         free(buf);
         return -1;
     }
 
-    ssize_t bytes_sent = send(client_socket, buf, len, 0);
+    // Send the serialized message
+    bytes_sent = write_all(client_socket, buf, len);
+    free(buf); // Free the serialized buffer
 
-    if (bytes_sent == -1){
-        free(buf);
+    if (bytes_sent != len) {
+        // Handle error if unable to send serialized message
         return -1;
     }
-
-    free(buf);
 
     return 0;
-
 }
+
+
 
 /* Liberta os recursos alocados por network_server_init(), nomeadamente
  * fechando o socket passado como argumento.

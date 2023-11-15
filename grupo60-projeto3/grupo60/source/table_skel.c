@@ -134,13 +134,36 @@ int invoke(MessageT *msg, struct table_t *table){
     
     else if(msg->opcode == MESSAGE_T__OPCODE__OP_GETKEYS && msg->c_type == MESSAGE_T__C_TYPE__CT_NONE){
 
-        char **keys = table_get_keys(table);
+        char **table_keys = table_get_keys(table);
 
-        if(keys != NULL){
+        if(table_keys != NULL){
 
+            char **keys = malloc(table_size(table) * sizeof(char*));
+            if (keys == NULL)
+            {
+                table_free_keys(table_keys);
+                msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
+                msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
+                return 0;
+            }
+            
+            for (size_t i = 0; i < table_size(table); i++)
+            {
+                keys[i] = strdup(table_keys[i]);
+                if (keys[i] == NULL) {
+                    table_free_keys(table_keys);
+                    free(keys);
+                    msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
+                    msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
+                    return 0;
+                }
+            }
+            
+            table_free_keys(table_keys);
             msg->opcode = MESSAGE_T__OPCODE__OP_GETKEYS+1;
             msg->c_type = MESSAGE_T__C_TYPE__CT_KEYS;
             msg->keys = keys;
+            msg->n_keys = table_size(table);
         }
 
         else{
@@ -151,23 +174,69 @@ int invoke(MessageT *msg, struct table_t *table){
 
     else if(msg->opcode == MESSAGE_T__OPCODE__OP_GETTABLE && msg->c_type == MESSAGE_T__C_TYPE__CT_NONE){
 
-        char **keys = table_get_keys(table);
+        char **table_keys = table_get_keys(table);
 
-        if(keys != NULL){
+        if(table_keys != NULL){
 
-            for(int i = 0; keys[i]!= NULL; i++){
+            EntryT **entries = malloc(table_size(table) * sizeof(EntryT*));
+            if (entries == NULL) {
+                msg->opcode = MESSAGE_T__OPCODE__OP_GETTABLE+1;
+                msg->c_type = MESSAGE_T__C_TYPE__CT_TABLE;
+                return 0;
+            }
 
-                struct data_t *data = table_get(table,keys[i]);
+            for(int i = 0; i < table_size(table); i++){
+
+                struct data_t *data = table_get(table, table_keys[i]);
 
                 if(data!= NULL){
-                    msg->entry->key = keys[i];
-                    msg->entry->value.len = data->datasize;
-                    msg->entry->value.data = data->data;
-                    msg->entries[i] = msg->entry;
+                    void *content = malloc(data->datasize);
+                    if (content == NULL) {
+                        data_destroy(data);
+                        table_free_keys(table_keys);
+                        msg->opcode = MESSAGE_T__OPCODE__OP_GETTABLE+1;
+                        msg->c_type = MESSAGE_T__C_TYPE__CT_TABLE;
+                        return 0;
+                    }
+                    memcpy(content, data->data, data->datasize);
+
+                    EntryT *entry = malloc(sizeof(EntryT));
+                    if (entry == NULL) {
+                        free(content);
+                        data_destroy(data);
+                        table_free_keys(table_keys);
+                        msg->opcode = MESSAGE_T__OPCODE__OP_GETTABLE+1;
+                        msg->c_type = MESSAGE_T__C_TYPE__CT_TABLE;
+                        return 0;
+                    }
+
+                    entry_t__init(entry);
+                    entry->key = strdup(table_keys[i]);
+                    entry->value.data = content;
+                    entry->value.len = data->datasize;
+                    if (entry->key == NULL) {
+                        entry_t__free_unpacked(entry, NULL);
+                        free(content);
+                        data_destroy(data);
+                        table_free_keys(table_keys);
+                        msg->opcode = MESSAGE_T__OPCODE__OP_GETTABLE+1;
+                        msg->c_type = MESSAGE_T__C_TYPE__CT_TABLE;
+                        return 0;
+                    }
+                    data_destroy(data);
+                    entries[i] = entry;
+                    
+                } else {
+                    table_free_keys(table_keys);
+                    msg->opcode = MESSAGE_T__OPCODE__OP_GETTABLE+1;
+                    msg->c_type = MESSAGE_T__C_TYPE__CT_TABLE;
+                    return 0;
                 }
 
             }
-
+            table_free_keys(table_keys);
+            msg->n_entries = table_size(table);
+            msg->entries = entries;
             msg->opcode = MESSAGE_T__OPCODE__OP_GETTABLE+1;
             msg->c_type = MESSAGE_T__C_TYPE__CT_TABLE;
         }

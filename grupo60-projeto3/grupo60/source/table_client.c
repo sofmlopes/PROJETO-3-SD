@@ -56,15 +56,15 @@ int main(int argc, char **argv) {
 
         command[strlen(command) - 1] = '\0';  // Remove a quebra de linha
 
-        if (strcmp(command, "quit") || strcmp(command, "q")) {
+        if (strncmp(command, "quit", 4) == 0 || strncmp(command, "q", 1) == 0) {
             printf("Bye, bye!\n");
             rtable_disconnect(rtable);
             return -1;  
         } 
 
-        else if (strcmp(command, "put")|| strcmp(command, "p")) {
-
-            char *key = strtok(command + 4, " ");
+        else if (strncmp(command, "put", 3) == 0 || strncmp(command, "p", 1) == 0) {
+            strtok(command, " ");
+            char *key = strtok(NULL, " ");
             char *data = strtok(NULL, "");
 
             if (key != NULL && data != NULL) {
@@ -91,10 +91,10 @@ int main(int argc, char **argv) {
                 fprintf(stderr, "Invalid arguments. Usage: put <key> <value>\n");
         }
 
-        else if (strcmp(command, "get") || strcmp(command, "g")) {
-            printf("getting the key\n");
+        else if (strncmp(command, "get ", 4) == 0 || strncmp(command, "g ", 2) == 0) {
 
-            char *key = strtok(command + 4, "");
+            strtok(command, " ");
+            char *key = strtok(NULL, "");
 
             if (key != NULL) {
 
@@ -114,9 +114,9 @@ int main(int argc, char **argv) {
                 fprintf(stderr, "Invalid arguments. Usage: get <key>\n");
 
         } 
-        else if (strcmp(command, "del") || strcmp(command, "d")) {
-
-            char *key = strtok(command + 4, "");
+        else if (strncmp(command, "del", 3) == 0 || strncmp(command, "d", 1) == 0) {
+            strtok(command, " ");
+            char *key = strtok(NULL, "");
 
             if (key != NULL) {
 
@@ -128,11 +128,8 @@ int main(int argc, char **argv) {
             else 
                 fprintf(stderr, "Invalid arguments. Usage: del <key>\n");
         } 
-        
-        else if (strcmp(command, "size") || strcmp(command, "s")) 
-            printf("Table size: %d\n", rtable_size(rtable));
 
-        else if (strcmp(command, "getkeys") || strcmp(command, "k")) {
+        else if (strncmp(command, "getkeys", 7) == 0 || strncmp(command, "k", 1) == 0) {
 
             char **keys = rtable_get_keys(rtable);
 
@@ -147,7 +144,7 @@ int main(int argc, char **argv) {
                 fprintf(stderr, "Error in rtable_get_keys\n");
         } 
 
-        else if (strcmp(command, "gettable") || strcmp(command, "t")) {
+        else if (strncmp(command, "gettable", 8) == 0 || strncmp(command, "t", 1) == 0) {
 
             struct entry_t **entries = rtable_get_table(rtable);
 
@@ -164,18 +161,21 @@ int main(int argc, char **argv) {
             } 
         } 
 
-/*
         else if (strncmp(command, "stats", 5) == 0 || strncmp(command, "st", 2) == 0) {
 
             struct statistics_t *stats = rtable_stats(rtable);
 
             if (stats != NULL) {
 
-                //fazer coisas
+                printf("Número total de operações na tabela executadas no servidor: %d\n", stats->num_clients);
+                printf("Tempo total acumulado gasto na execução de operações na tabela: %d\n", stats->num_operations);
+                printf("Número de clientes atualmente ligados ao servidor: %d\n", stats->time);
 
             } 
         } 
-    */
+
+        else if (strncmp(command, "size", 4) == 0 || strncmp(command, "s", 1) == 0) 
+            printf("Table size: %d\n", rtable_size(rtable));
 
         else 
             fprintf(stderr, "Invalid command.\n Usage: p[ut] <key> <value> | g[et] <key> | d[el] <key> | s[ize] | [get]k[eys] | [get]t[able] | q[uit] | st[ats] \n");

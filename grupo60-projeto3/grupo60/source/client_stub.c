@@ -430,16 +430,15 @@ void rtable_free_entries(struct entry_t **entries){
 
 /* Obtém as estatísticas do servidor. 
 */
-/*
 struct statistics_t *rtable_stats(struct rtable_t *rtable){
 
     if (rtable == NULL) 
-        return -1;
+        return NULL;
 
     MessageT *msg_request = (MessageT *)malloc(sizeof(MessageT));
 
     if (msg_request == NULL) 
-        return -1;
+        return NULL;
 
     message_t__init(msg_request);
     msg_request->opcode = MESSAGE_T__OPCODE__OP_STATS;
@@ -447,29 +446,31 @@ struct statistics_t *rtable_stats(struct rtable_t *rtable){
 
     MessageT *msg_response = network_send_receive(rtable, msg_request);
 
-    message_t__free_unpacked(msg_request, NULL);
+    free(msg_request);
 
     if (msg_response == NULL)
-        return -1;
+        return NULL;
     
     if (msg_response->opcode != MESSAGE_T__OPCODE__OP_STATS + 1 ||
         msg_response->c_type != MESSAGE_T__C_TYPE__CT_STATS) {
         message_t__free_unpacked(msg_response, NULL);
-        return -1;
+        return NULL;
     }
 
-    struct statistics_t *stats = (struct statistics_t *)malloc( sizeof(struct statistics_t*));
+    struct statistics_t *stats = stats_create();
     
     if (stats == NULL) {
         message_t__free_unpacked(msg_response, NULL);
         return NULL;
     }
 
+    stats->num_clients = msg_response->stats->num_clients;
+    stats->num_operations = msg_request->stats->num_operations;
+    stats->time = msg_response->stats->time;
     message_t__free_unpacked(msg_response, NULL);
 
     return stats;
-
 }
-*/
+
 
 
