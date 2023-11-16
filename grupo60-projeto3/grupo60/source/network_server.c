@@ -70,7 +70,6 @@ int network_server_init(short port){
 }
 
 void *handle_client(void *params) {
-    printf("Client connection established\n");
     struct thread_parameters *tp = (struct thread_parameters *) params;
 
     while (1) {
@@ -80,7 +79,6 @@ void *handle_client(void *params) {
         if (msg == NULL) {
             // perror("Erro ao receber mensagem do cliente");
             close(tp->connsockfd);
-            printf("Server ready, waiting for connections\n");
             break;
         }
 
@@ -91,7 +89,6 @@ void *handle_client(void *params) {
         if (result == -1) {
             perror("Erro ao processar mensagem do cliente");
             close(tp->connsockfd);
-            printf("Server ready, waiting for connections\n");
             break;
         }
 
@@ -99,11 +96,11 @@ void *handle_client(void *params) {
         if (network_send(tp->connsockfd, msg) == -1) {
             perror("Erro ao enviar resposta ao cliente");
             close(tp->connsockfd);
-            printf("Server ready, waiting for connections\n");
             break;
         }
     }
     close(tp->connsockfd);
+    printf("CLient connection closed\n");
     return NULL;
 }
 
@@ -142,6 +139,9 @@ int network_main_loop(int listening_socket, struct table_t *table) {
             free(tp);
             return -1;
         }
+
+        pthread_detach(thread_id);
+        printf("Client connection established\n");
 
     }
 
