@@ -70,12 +70,11 @@ int network_server_init(short port){
 }
 
 void *handle_client(void *params) {
-
+    printf("Client connection established\n");
     struct thread_parameters *tp = (struct thread_parameters *) params;
 
     while (1) {
                 
-        //Receber uma mensagem usando a função network_receive
         MessageT *msg = network_receive(tp->connsockfd);
 
         if (msg == NULL) {
@@ -103,8 +102,9 @@ void *handle_client(void *params) {
             printf("Server ready, waiting for connections\n");
             break;
         }
-
     }
+    close(tp->connsockfd);
+    return NULL;
 }
 
 
@@ -126,16 +126,12 @@ int network_main_loop(int listening_socket, struct table_t *table) {
     printf("Server ready, waiting for connections\n");
 
     while (1) {
-        // Accept a connection from a client
         int connsockfd = accept(listening_socket, (struct sockaddr*)&client, &size_client);
         if (connsockfd == -1) {
             perror("Error accepting connection");
             return -1;
         }
 
-        printf("Client connection established\n");
-
-        // Create a thread to handle the client
         pthread_t thread_id;
         struct thread_parameters *tp = malloc(sizeof(struct thread_parameters));
         tp->connsockfd = connsockfd;
@@ -147,10 +143,11 @@ int network_main_loop(int listening_socket, struct table_t *table) {
             return -1;
         }
 
+    }
+
     return 0;
- 
- }
 }
+
 
 
 /* A função network_receive() deve:
