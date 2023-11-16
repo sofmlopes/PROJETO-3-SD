@@ -19,10 +19,8 @@
 #include "table_skel.h"
 #include "table.h"
 
-struct thread_parameters {
-	struct table_t *table;
-	int connsockfd;
-};
+struct table_t *global_table;
+
 
 /* Função para preparar um socket de receção de pedidos de ligação
  * num determinado porto.
@@ -69,38 +67,38 @@ int network_server_init(short port){
 
 }
 
-void *handle_client(void *params) {
+void *handle_client(void *arg) {
 
-    struct thread_parameters *tp = (struct thread_parameters *) params;
+    int sockfd = *(int *)arg;
 
     while (1) {
                 
-        MessageT *msg = network_receive(tp->connsockfd);
+        MessageT *msg = network_receive(sockfd);
 
         if (msg == NULL) {
             // perror("Erro ao receber mensagem do cliente");
-            close(tp->connsockfd);
+            close(sockfd);
             break;
         }
 
         //Entregar a mensagem de-serializada ao skeleton para ser processada na tabela table
-        int result = invoke(msg, tp->table);
+        int result = invoke(msg, global_table);
 
         //Esperar a resposta do skeleton
         if (result == -1) {
             perror("Erro ao processar mensagem do cliente");
-            close(tp->connsockfd);
+            close(sockfd);
             break;
         }
 
         //Enviar a resposta ao cliente usando a função network_send
-        if (network_send(tp->connsockfd, msg) == -1) {
+        if (network_send(sockfd, msg) == -1) {
             perror("Erro ao enviar resposta ao cliente");
-            close(tp->connsockfd);
+            close(sockfd);
             break;
         }
     }
-    close(tp->connsockfd);
+    close(sockfd);
     printf("Client connection closed\n");
     return NULL;
 }
@@ -132,18 +130,19 @@ int network_main_loop(int listening_socket, struct table_t *table) {
         }
 
         pthread_t thread_id;
-        struct thread_parameters *tp = malloc(sizeof(struct thread_parameters));
-        tp->connsockfd = connsockfd;
-        tp->table = table;
+        int *i = malloc(sizeof(int));
+        *i = connsockfd;
+        global_table = table;
 
-        if (pthread_create(&thread_id, NULL, &handle_client, tp) < 0) {
+        if (pthread_create(&thread_id, NULL, &handle_client, i) < 0) {
             perror("Could not create thread");
-            free(tp);
+            free(i);
             return -1;
         }
 
         pthread_detach(thread_id);
         printf("Client connection established\n");
+        
 
     }
 
