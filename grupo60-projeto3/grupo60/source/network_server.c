@@ -70,6 +70,7 @@ int network_server_init(short port){
 }
 
 void *handle_client(void *params) {
+
     struct thread_parameters *tp = (struct thread_parameters *) params;
 
     while (1) {
@@ -100,7 +101,7 @@ void *handle_client(void *params) {
         }
     }
     close(tp->connsockfd);
-    printf("CLient connection closed\n");
+    printf("Client connection closed\n");
     return NULL;
 }
 
@@ -123,6 +124,7 @@ int network_main_loop(int listening_socket, struct table_t *table) {
     printf("Server ready, waiting for connections\n");
 
     while (1) {
+        
         int connsockfd = accept(listening_socket, (struct sockaddr*)&client, &size_client);
         if (connsockfd == -1) {
             perror("Error accepting connection");

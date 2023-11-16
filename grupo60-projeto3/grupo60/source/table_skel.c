@@ -246,6 +246,9 @@ int invoke(MessageT *msg, struct table_t *table){
             msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;  
         }
     }
+    else if(msg->opcode == MESSAGE_T__OPCODE__OP_STATS && msg->c_type == MESSAGE_T__C_TYPE__CT_NONE){
+
+    }
     return 0;
     
 }
