@@ -461,11 +461,12 @@ struct statistics_t *rtable_stats(struct rtable_t *rtable){
     
     if (stats == NULL) {
         message_t__free_unpacked(msg_response, NULL);
+        stats_destroy(stats);
         return NULL;
     }
 
     stats->num_clients = msg_response->stats->num_clients;
-    stats->num_operations = msg_request->stats->num_operations;
+    stats->num_operations = msg_response->stats->num_operations;
     stats->time = msg_response->stats->time;
     message_t__free_unpacked(msg_response, NULL);
 

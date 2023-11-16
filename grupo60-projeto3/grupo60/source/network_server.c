@@ -18,9 +18,11 @@
 #include "message.h"
 #include "table_skel.h"
 #include "table.h"
+#include "stats.h"
 
 struct table_t *global_table;
-
+struct statistics_t *stats;
+pthread_mutex_t stats_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Função para preparar um socket de receção de pedidos de ligação
  * num determinado porto.
@@ -115,6 +117,12 @@ void *handle_client(void *arg) {
  * caso retorna -1.
  */
 int network_main_loop(int listening_socket, struct table_t *table) {
+    global_table = table;
+
+    stats = stats_create();
+    if(stats == NULL){
+        stats_destroy(stats);
+    }
 
     struct sockaddr_in client;
     socklen_t size_client = sizeof(struct sockaddr_in);
@@ -132,8 +140,6 @@ int network_main_loop(int listening_socket, struct table_t *table) {
         pthread_t thread_id;
         int *i = malloc(sizeof(int));
         *i = connsockfd;
-        global_table = table;
-
         if (pthread_create(&thread_id, NULL, &handle_client, i) < 0) {
             perror("Could not create thread");
             free(i);
@@ -142,8 +148,9 @@ int network_main_loop(int listening_socket, struct table_t *table) {
 
         pthread_detach(thread_id);
         printf("Client connection established\n");
-        
-
+        pthread_mutex_lock(&stats_mutex);
+        stats->num_clients++;
+        pthread_mutex_unlock(&stats_mutex);
     }
 
     return 0;
@@ -262,9 +269,20 @@ int network_server_close(int socket){
         perror("Erro ao fechar o socket do servidor");
         return -1;
     }
+    
+    pthread_mutex_lock(&stats_mutex);
+    stats_destroy(stats);
+    pthread_mutex_unlock(&stats_mutex);
 
     return 0;
 
+}
+
+/*
+* Devolve a estrutura global que guarda as estatísticas
+*/
+struct statistics_t *get_global_stats() {
+    return stats;
 }
 
 

@@ -11,7 +11,7 @@
 #include "network_server.h"
 #include "sdmessage.pb-c.h"
 #include "table_skel.h"
-#include "table.h"  
+#include "table.h"
 
 /**
  * table-server <port> <n_lists>
@@ -40,7 +40,6 @@ int main(int argc, char **argv) {
     }
 
     struct table_t *table = table_skel_init(n_lists);
-
     if (table == NULL) {
         printf("Error initializing table.\n");
         return -1;

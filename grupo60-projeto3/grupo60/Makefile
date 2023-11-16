@@ -28,7 +28,7 @@ CLIENT_SRC = $(SRC_DIR)/network_client.c $(SRC_DIR)/client_stub.c $(SRC_DIR)/sdm
 CLIENT_OBJ = $(patsubst $(SRC_DIR)%.c,$(OBJ_DIR)%.o,$(CLIENT_SRC))
 
 # Fontes e objetos do servidor
-SERVER_SRC = $(SRC_DIR)/network_server.c $(SRC_DIR)/table_skel.c $(SRC_DIR)/sdmessage.pb-c.c $(SRC_DIR)/table_server.c $(SRC_DIR)/message.c
+SERVER_SRC = $(SRC_DIR)/network_server.c $(SRC_DIR)/table_skel.c $(SRC_DIR)/sdmessage.pb-c.c $(SRC_DIR)/table_server.c $(SRC_DIR)/message.c $(SRC_DIR)/stats.c
 SERVER_OBJ = $(patsubst $(SRC_DIR)%.c,$(OBJ_DIR)%.o,$(SERVER_SRC))
 
 # Compilar tudo

@@ -43,4 +43,9 @@ int network_send(int client_socket, MessageT *msg);
  */
 int network_server_close(int socket);
 
+/*
+* Devolve a estrutura global que guarda as estatísticas
+*/
+struct statistics_t *get_global_stats();
+
 #endif

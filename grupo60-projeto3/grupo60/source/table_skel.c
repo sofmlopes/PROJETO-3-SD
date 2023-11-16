@@ -12,6 +12,8 @@
 #include "sdmessage.pb-c.h"
 #include "table_skel.h"
 #include "table.h"
+#include "network_server.h"
+#include "stats.h"
 
 /* Inicia o skeleton da tabela.
  * O main() do servidor deve chamar esta função antes de poder usar a
@@ -248,6 +250,21 @@ int invoke(MessageT *msg, struct table_t *table){
     }
     else if(msg->opcode == MESSAGE_T__OPCODE__OP_STATS && msg->c_type == MESSAGE_T__C_TYPE__CT_NONE){
         
+        struct statistics_t *global_stats = get_global_stats();
+
+        if(global_stats != NULL){
+
+            msg->opcode = MESSAGE_T__OPCODE__OP_STATS+1;
+            msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
+            msg->stats->num_operations = global_stats->num_operations;
+            msg->stats->time = global_stats->time;
+            msg->stats->num_clients = global_stats->num_clients;
+        }
+
+        else{
+            msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
+            msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;  
+        }
     }
     return 0;
     
