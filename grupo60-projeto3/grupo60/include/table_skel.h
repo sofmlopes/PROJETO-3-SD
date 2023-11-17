@@ -4,6 +4,11 @@
 #include "table.h"
 #include "sdmessage.pb-c.h"
 
+/*
+* Funcão auxiliar, que devolve o tempo atual em microsegundos.
+*/
+unsigned long get_time_micros();
+
 /* Inicia o skeleton da tabela.
  * O main() do servidor deve chamar esta função antes de poder usar a
  * função invoke(). O parâmetro n_lists define o número de listas a

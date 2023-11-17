@@ -4,6 +4,9 @@
 #include "table.h"
 #include "sdmessage.pb-c.h"
 
+extern struct table_t *global_table; //variável global que guarda a tabela
+extern struct statistics_t *stats; //variável global que guarda as estatísticas
+
 /* Função para preparar um socket de receção de pedidos de ligação
  * num determinado porto.
  * Retorna o descritor do socket ou -1 em caso de erro.
@@ -42,10 +45,5 @@ int network_send(int client_socket, MessageT *msg);
  * Retorna 0 (OK) ou -1 em caso de erro.
  */
 int network_server_close(int socket);
-
-/*
-* Devolve a estrutura global que guarda as estatísticas
-*/
-struct statistics_t *get_global_stats();
 
 #endif

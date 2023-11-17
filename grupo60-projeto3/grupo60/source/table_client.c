@@ -168,7 +168,7 @@ int main(int argc, char **argv) {
             if (stats != NULL) {
 
                 printf("Número total de operações na tabela executadas no servidor: %d\n", stats->num_operations);
-                printf("Tempo total acumulado gasto na execução de operações na tabela: %d\n", stats->time);
+                printf("Tempo total acumulado gasto na execução de operações na tabela: %lu\n", stats->time);
                 printf("Número de clientes atualmente ligados ao servidor: %d\n", stats->num_clients);
 
             } 

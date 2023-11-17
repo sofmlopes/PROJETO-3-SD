@@ -23,7 +23,7 @@ struct statistics_t *stats_create(){
     
     new_stats->num_clients=0;
     new_stats->num_operations=0;
-    new_stats->time=0;
+    new_stats->time=0.0;
 
     return new_stats;
 }

@@ -5,7 +5,7 @@
  */
 struct statistics_t {
 	int num_operations; /* Número total de operações na tabela executadas no servidor */
-    int time; /* Tempo total acumulado gasto na execução de operações na tabela */
+    unsigned long time; /* Tempo total acumulado gasto na execução de operações na tabela */
     int num_clients; /* Número de clientes atualmente ligados ao servidor */
 };
 

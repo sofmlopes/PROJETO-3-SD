@@ -19,10 +19,10 @@
 #include "table_skel.h"
 #include "table.h"
 #include "stats.h"
+#include "mutex.h"
 
 struct table_t *global_table;
 struct statistics_t *stats;
-pthread_mutex_t stats_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Função para preparar um socket de receção de pedidos de ligação
  * num determinado porto.
@@ -271,19 +271,9 @@ int network_server_close(int socket){
         return -1;
     }
     
-    pthread_mutex_lock(&stats_mutex);
     stats_destroy(stats);
-    pthread_mutex_unlock(&stats_mutex);
 
     return 0;
 
 }
-
-/*
-* Devolve a estrutura global que guarda as estatísticas
-*/
-struct statistics_t *get_global_stats() {
-    return stats;
-}
-
 

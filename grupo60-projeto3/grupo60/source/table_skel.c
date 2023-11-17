@@ -15,14 +15,16 @@
 #include "network_server.h"
 #include "stats.h"
 #include <sys/time.h>
+#include "mutex.h"
 
-extern struct statistics_t *stats;
-
+/*
+* Funcão auxiliar, que devolve o tempo atual em microsegundos.
+*/
 unsigned long get_time_micros(){
 
     struct timeval current_time;
     gettimeofday(&current_time, NULL);
-    return 1000000 * current_time.tv_sec + current_time.tv_usec;
+    return (unsigned long) (1000000 * current_time.tv_sec + current_time.tv_usec);
 }
 
 /* Inicia o skeleton da tabela.
@@ -66,12 +68,12 @@ int invoke(MessageT *msg, struct table_t *table){
             struct data_t *data = data_create(msg->entry->value.len, msg->entry->value.data); 
             
             if (data != NULL){
-
+                
                 if(table_put(table,msg->entry->key,data) == 0){
                     msg->opcode = MESSAGE_T__OPCODE__OP_PUT+1;
                     msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
                     stats->num_operations++;
-                    stats->time += get_time_micros()-init_time;
+                    stats->time += (unsigned long) get_time_micros()-init_time;
                 }
             }
         }
