@@ -14,6 +14,16 @@
 #include "table.h"
 #include "network_server.h"
 #include "stats.h"
+#include <sys/time.h>
+
+extern struct statistics_t *stats;
+
+unsigned long get_time_micros(){
+
+    struct timeval current_time;
+    gettimeofday(&current_time, NULL);
+    return 1000000 * current_time.tv_sec + current_time.tv_usec;
+}
 
 /* Inicia o skeleton da tabela.
  * O main() do servidor deve chamar esta função antes de poder usar a
@@ -49,6 +59,8 @@ int invoke(MessageT *msg, struct table_t *table){
     
     if(msg->opcode == MESSAGE_T__OPCODE__OP_PUT && msg->c_type == MESSAGE_T__C_TYPE__CT_ENTRY){
 
+        unsigned long init_time = get_time_micros();
+
         if(msg->entry->value.len>0 && msg->entry->value.data != NULL){
 
             struct data_t *data = data_create(msg->entry->value.len, msg->entry->value.data); 
@@ -58,6 +70,8 @@ int invoke(MessageT *msg, struct table_t *table){
                 if(table_put(table,msg->entry->key,data) == 0){
                     msg->opcode = MESSAGE_T__OPCODE__OP_PUT+1;
                     msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
+                    stats->num_operations++;
+                    stats->time += get_time_micros()-init_time;
                 }
             }
         }
@@ -69,6 +83,8 @@ int invoke(MessageT *msg, struct table_t *table){
     }
 
     else if(msg->opcode == MESSAGE_T__OPCODE__OP_GET && msg->c_type == MESSAGE_T__C_TYPE__CT_KEY){
+
+        unsigned long init_time = get_time_micros();
 
         if (msg->key != NULL){
 
@@ -82,6 +98,8 @@ int invoke(MessageT *msg, struct table_t *table){
                 msg->value.data = (uint8_t *)malloc(data->datasize); // Allocate memory for the data
                 if (msg->value.data != NULL) {
                     memcpy(msg->value.data, data->data, data->datasize); // Copy the data
+                    stats->num_operations++;
+                    stats->time += get_time_micros()-init_time;
                 } 
                 else {
                     msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
@@ -98,13 +116,17 @@ int invoke(MessageT *msg, struct table_t *table){
 
     else if(msg->opcode == MESSAGE_T__OPCODE__OP_DEL && msg->c_type == MESSAGE_T__C_TYPE__CT_KEY){
 
+        unsigned long init_time = get_time_micros();
+
         if (msg->key != NULL){
 
             if(table_remove(table,msg->key) == 0){
                 msg->opcode = MESSAGE_T__OPCODE__OP_DEL+1;
                 msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
+                stats->num_operations++;
+                stats->time += get_time_micros()-init_time;
             }
-            else if(table_remove(table,msg->key) == 1){
+            else if(table_remove(table,msg->key) == -1){
                 msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
                 msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;  
             }
@@ -119,6 +141,8 @@ int invoke(MessageT *msg, struct table_t *table){
 
     else if(msg->opcode == MESSAGE_T__OPCODE__OP_SIZE && msg->c_type == MESSAGE_T__C_TYPE__CT_NONE){
 
+        unsigned long init_time = get_time_micros();
+
         int size = table_size(table);
 
         if(size > 0){
@@ -126,6 +150,8 @@ int invoke(MessageT *msg, struct table_t *table){
             msg->opcode = MESSAGE_T__OPCODE__OP_SIZE+1;
             msg->c_type = MESSAGE_T__C_TYPE__CT_RESULT;
             msg->result = size;
+            stats->num_operations++;
+            stats->time += get_time_micros()-init_time;
         }
 
         else{
@@ -135,6 +161,8 @@ int invoke(MessageT *msg, struct table_t *table){
     }
     
     else if(msg->opcode == MESSAGE_T__OPCODE__OP_GETKEYS && msg->c_type == MESSAGE_T__C_TYPE__CT_NONE){
+
+        unsigned long init_time = get_time_micros();
 
         char **table_keys = table_get_keys(table);
 
@@ -166,6 +194,8 @@ int invoke(MessageT *msg, struct table_t *table){
             msg->c_type = MESSAGE_T__C_TYPE__CT_KEYS;
             msg->keys = keys;
             msg->n_keys = table_size(table);
+            stats->num_operations++;
+            stats->time += get_time_micros()-init_time;
         }
 
         else{
@@ -175,6 +205,8 @@ int invoke(MessageT *msg, struct table_t *table){
     }
 
     else if(msg->opcode == MESSAGE_T__OPCODE__OP_GETTABLE && msg->c_type == MESSAGE_T__C_TYPE__CT_NONE){
+
+        unsigned long init_time = get_time_micros();
 
         char **table_keys = table_get_keys(table);
 
@@ -241,6 +273,8 @@ int invoke(MessageT *msg, struct table_t *table){
             msg->entries = entries;
             msg->opcode = MESSAGE_T__OPCODE__OP_GETTABLE+1;
             msg->c_type = MESSAGE_T__C_TYPE__CT_TABLE;
+            stats->num_operations++;
+            stats->time += get_time_micros()-init_time;
         }
 
         else{
@@ -250,22 +284,25 @@ int invoke(MessageT *msg, struct table_t *table){
     }
     else if(msg->opcode == MESSAGE_T__OPCODE__OP_STATS && msg->c_type == MESSAGE_T__C_TYPE__CT_NONE){
         
-        struct statistics_t *global_stats = get_global_stats();
+        StatisticsT *send_stats = (StatisticsT *)malloc(sizeof(StatisticsT));
 
-        if(global_stats != NULL){
-
-            msg->opcode = MESSAGE_T__OPCODE__OP_STATS+1;
-            msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
-            msg->stats->num_operations = global_stats->num_operations;
-            msg->stats->time = global_stats->time;
-            msg->stats->num_clients = global_stats->num_clients;
-        }
-
-        else{
+        if(send_stats ==NULL){
             msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
-            msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;  
+            msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;
+            return -1;
         }
+        else{
+            statistics_t__init(send_stats);
+            msg->opcode = MESSAGE_T__OPCODE__OP_STATS+1;
+            msg->c_type = MESSAGE_T__C_TYPE__CT_STATS;
+            msg->stats = send_stats;
+            msg->stats->num_operations = stats->num_operations;
+            msg->stats->time = stats->time;
+            msg->stats->num_clients = stats->num_clients;
+            
+        }  
     }
+
     return 0;
     
 }

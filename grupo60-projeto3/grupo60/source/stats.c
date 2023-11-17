@@ -7,7 +7,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
 #include "stats.h"
 
 /* Função que cria e inicializa uma nova estrutura statistics_t.

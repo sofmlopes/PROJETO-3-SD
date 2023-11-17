@@ -102,6 +102,7 @@ void *handle_client(void *arg) {
     }
     close(sockfd);
     printf("Client connection closed\n");
+    stats->num_clients--;
     return NULL;
 }
 
@@ -148,9 +149,9 @@ int network_main_loop(int listening_socket, struct table_t *table) {
 
         pthread_detach(thread_id);
         printf("Client connection established\n");
-        pthread_mutex_lock(&stats_mutex);
+        //pthread_mutex_lock(&stats_mutex);
         stats->num_clients++;
-        pthread_mutex_unlock(&stats_mutex);
+        //pthread_mutex_unlock(&stats_mutex);
     }
 
     return 0;
