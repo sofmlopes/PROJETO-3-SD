@@ -8,7 +8,7 @@ int begin_write(int thread_id){
     while(writers == 0){
         pthread_cond_wait(&c, &m);
     }
-    writers--;
+    writers++;
     pthread_mutex_unlock(&m);
 }
 
@@ -17,7 +17,7 @@ int begin_write(int thread_id){
 */
 void end_write(){
     pthread_mutex_lock(&m);
-    writers++;
+    writers--;
     pthread_cond_broadcast(&c);
     pthread_mutex_unlock(&m);
 }
