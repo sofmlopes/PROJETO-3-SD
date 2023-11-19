@@ -17,6 +17,10 @@
 #include "table.h"
 #include "table_skel.h"
 
+pthread_mutex_t write_mutex;
+pthread_mutex_t read_mutex;
+int readers_count = 0;
+
 /*
 * Funcão auxiliar, que devolve o tempo atual em microsegundos.
 */
@@ -36,6 +40,9 @@ unsigned long get_time_micros(){
 struct table_t *table_skel_init(int n_lists){
 
     struct table_t *new_table = table_create(n_lists);
+
+    pthread_mutex_init(&write_mutex, NULL);
+    pthread_mutex_init(&read_mutex, NULL);
 
     return new_table;
 
@@ -61,6 +68,8 @@ int invoke(MessageT *msg, struct table_t *table){
     
     if(msg->opcode == MESSAGE_T__OPCODE__OP_PUT && msg->c_type == MESSAGE_T__C_TYPE__CT_ENTRY){
 
+        begin_write(write_mutex);
+
         unsigned long init_time = get_time_micros();
 
         if(msg->entry->value.len>0 && msg->entry->value.data != NULL){
@@ -82,26 +91,35 @@ int invoke(MessageT *msg, struct table_t *table){
             msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
             msg->c_type = MESSAGE_T__C_TYPE__CT_NONE; 
         }
+
+        end_write(write_mutex);
     }
 
     else if(msg->opcode == MESSAGE_T__OPCODE__OP_GET && msg->c_type == MESSAGE_T__C_TYPE__CT_KEY){
+
 
         unsigned long init_time = get_time_micros();
 
         if (msg->key != NULL){
 
+            begin_read(read_mutex, write_mutex, readers_count);
+            
             struct data_t *data = table_get(table,msg->key);
 
-            if (data != NULL) {
+            end_read(read_mutex, write_mutex, readers_count);
 
+            if (data != NULL) {
                 msg->opcode = MESSAGE_T__OPCODE__OP_GET + 1;
                 msg->c_type = MESSAGE_T__C_TYPE__CT_VALUE;
                 msg->value.len = data->datasize;
                 msg->value.data = (uint8_t *)malloc(data->datasize); // Allocate memory for the data
                 if (msg->value.data != NULL) {
                     memcpy(msg->value.data, data->data, data->datasize); // Copy the data
+                    begin_write(write_mutex);
                     stats->num_operations++;
                     stats->time += get_time_micros()-init_time;
+                    end_write(write_mutex);
+
                 } 
                 else {
                     msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
@@ -114,9 +132,12 @@ int invoke(MessageT *msg, struct table_t *table){
             msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
             msg->c_type = MESSAGE_T__C_TYPE__CT_NONE; 
         }
+
     }
 
     else if(msg->opcode == MESSAGE_T__OPCODE__OP_DEL && msg->c_type == MESSAGE_T__C_TYPE__CT_KEY){
+
+        begin_write(write_mutex);
 
         unsigned long init_time = get_time_micros();
 
@@ -139,34 +160,47 @@ int invoke(MessageT *msg, struct table_t *table){
             msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
             msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;  
         }
+
+        end_write(write_mutex);
     }
 
     else if(msg->opcode == MESSAGE_T__OPCODE__OP_SIZE && msg->c_type == MESSAGE_T__C_TYPE__CT_NONE){
 
         unsigned long init_time = get_time_micros();
 
+        begin_read(read_mutex, write_mutex, readers_count);
+
         int size = table_size(table);
 
+        end_read(read_mutex, write_mutex, readers_count);
+        
         if(size > 0){
-
             msg->opcode = MESSAGE_T__OPCODE__OP_SIZE+1;
             msg->c_type = MESSAGE_T__C_TYPE__CT_RESULT;
             msg->result = size;
+            begin_write(write_mutex);
             stats->num_operations++;
             stats->time += get_time_micros()-init_time;
+            end_write(write_mutex);
         }
 
         else{
             msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
             msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;  
         }
+
     }
     
     else if(msg->opcode == MESSAGE_T__OPCODE__OP_GETKEYS && msg->c_type == MESSAGE_T__C_TYPE__CT_NONE){
 
+
         unsigned long init_time = get_time_micros();
 
+        begin_read(read_mutex, write_mutex, readers_count);
+
         char **table_keys = table_get_keys(table);
+
+        end_read(read_mutex, write_mutex, readers_count);
 
         if(table_keys != NULL){
 
@@ -196,21 +230,28 @@ int invoke(MessageT *msg, struct table_t *table){
             msg->c_type = MESSAGE_T__C_TYPE__CT_KEYS;
             msg->keys = keys;
             msg->n_keys = table_size(table);
+            begin_write(write_mutex);
             stats->num_operations++;
             stats->time += get_time_micros()-init_time;
+            end_write(write_mutex);
         }
 
         else{
             msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
             msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;  
         }
+
     }
 
     else if(msg->opcode == MESSAGE_T__OPCODE__OP_GETTABLE && msg->c_type == MESSAGE_T__C_TYPE__CT_NONE){
 
         unsigned long init_time = get_time_micros();
 
+        begin_read(read_mutex, write_mutex, readers_count);
+
         char **table_keys = table_get_keys(table);
+
+        end_read(read_mutex, write_mutex, readers_count);
 
         if(table_keys != NULL){
 
@@ -223,7 +264,11 @@ int invoke(MessageT *msg, struct table_t *table){
 
             for(int i = 0; i < table_size(table); i++){
 
+                begin_read(read_mutex, write_mutex, readers_count);
+
                 struct data_t *data = table_get(table, table_keys[i]);
+
+                end_read(read_mutex, write_mutex, readers_count);
 
                 if(data!= NULL){
                     void *content = malloc(data->datasize);
@@ -275,14 +320,17 @@ int invoke(MessageT *msg, struct table_t *table){
             msg->entries = entries;
             msg->opcode = MESSAGE_T__OPCODE__OP_GETTABLE+1;
             msg->c_type = MESSAGE_T__C_TYPE__CT_TABLE;
+            begin_write(write_mutex);
             stats->num_operations++;
             stats->time += get_time_micros()-init_time;
+            end_write(write_mutex);
         }
 
         else{
             msg->opcode = MESSAGE_T__OPCODE__OP_ERROR;
             msg->c_type = MESSAGE_T__C_TYPE__CT_NONE;  
         }
+
     }
     else if(msg->opcode == MESSAGE_T__OPCODE__OP_STATS && msg->c_type == MESSAGE_T__C_TYPE__CT_NONE){
         
@@ -308,4 +356,5 @@ int invoke(MessageT *msg, struct table_t *table){
     return 0;
     
 }
+
 

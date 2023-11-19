@@ -3,19 +3,25 @@
 
 #include <pthread.h>
 
-extern pthread_mutex_t m;
-extern pthread_cond_t c;
-extern int writers;
-
 /**
  * Função de controlo de início de escrita.
 */
-int begin_write(int thread_id);
+void begin_write(pthread_mutex_t write_mutex);
 
 /**
  * Função de controlo de fecho de escrita.
 */
-void end_write();
+void end_write(pthread_mutex_t write_mutex);
+
+/**
+ * Função de controlo de início de leitura
+*/
+void begin_read(pthread_mutex_t read_mutex, pthread_mutex_t write_mutex, int readers_count);
+
+/**
+ * Função de controlo de fecho de leitura
+*/
+void end_read(pthread_mutex_t read_mutex, pthread_mutex_t write_mutex, int readers_count);
 
 
 #endif

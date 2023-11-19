@@ -7,28 +7,40 @@
 
 #include "mutex.h"
 
-pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t c = PTHREAD_COND_INITIALIZER;
-int writers = 1;
-
 /**
  * Função de controlo de início de escrita.
 */
-int begin_write(int thread_id){
-    pthread_mutex_lock(&m);
-    while(writers == 0){
-        pthread_cond_wait(&c, &m);
-    }
-    writers++;
-    pthread_mutex_unlock(&m);
+void begin_write(pthread_mutex_t write_mutex){   
+    pthread_mutex_lock(&write_mutex); // Bloqueia o mutex de escrita
 }
 
 /**
  * Função de controlo de fecho de escrita.
 */
-void end_write(){
-    pthread_mutex_lock(&m);
-    writers--;
-    pthread_cond_broadcast(&c);
-    pthread_mutex_unlock(&m);
+void end_write(pthread_mutex_t write_mutex){
+    pthread_mutex_unlock(&write_mutex); // Desbloqueia o mutex de escrita após a operação
+}
+
+/**
+ * Função de controlo de início de leitura
+*/
+void begin_read(pthread_mutex_t read_mutex, pthread_mutex_t write_mutex, int readers_count) {
+    pthread_mutex_lock(&read_mutex); // Bloqueia o mutex de leitura
+    readers_count++; // Incrementa o contador de leitores
+    if (readers_count == 1) {
+        pthread_mutex_lock(&write_mutex); // Se for o primeiro leitor, bloqueia o mutex de escrita
+    }
+    pthread_mutex_unlock(&read_mutex); // Desbloqueia o mutex de leitura
+}
+
+/**
+ * Função de controlo de fecho de leitura
+*/
+void end_read(pthread_mutex_t read_mutex, pthread_mutex_t write_mutex, int readers_count) {
+    pthread_mutex_lock(&read_mutex); // Bloqueia o mutex de leitura
+    readers_count--; // Decrementa o contador de leitores
+    if (readers_count == 0) {
+        pthread_mutex_unlock(&write_mutex); // Se for o último leitor, desbloqueia o mutex de escrita
+    }
+    pthread_mutex_unlock(&read_mutex); // Desbloqueia o mutex de leitura após a operação
 }
