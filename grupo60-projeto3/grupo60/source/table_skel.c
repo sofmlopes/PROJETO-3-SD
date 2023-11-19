@@ -7,15 +7,15 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <sys/time.h>
 
 #include "data.h"
-#include "sdmessage.pb-c.h"
-#include "table_skel.h"
-#include "table.h"
-#include "network_server.h"
-#include "stats.h"
-#include <sys/time.h>
 #include "mutex.h"
+#include "network_server.h"
+#include "sdmessage.pb-c.h"
+#include "stats.h"
+#include "table.h"
+#include "table_skel.h"
 
 /*
 * Funcão auxiliar, que devolve o tempo atual em microsegundos.

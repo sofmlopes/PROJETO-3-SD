@@ -10,8 +10,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "client_stub.h"
 #include "client_stub-private.h"
+#include "client_stub.h"
 #include "message.h"
 #include "sdmessage.pb-c.h"
 

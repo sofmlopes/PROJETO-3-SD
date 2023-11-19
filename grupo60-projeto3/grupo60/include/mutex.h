@@ -3,10 +3,9 @@
 
 #include <pthread.h>
 
-pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t c = PTHREAD_COND_INITIALIZER;
-int writers = 1;
-
+extern pthread_mutex_t m;
+extern pthread_cond_t c;
+extern int writers;
 
 /**
  * Função de controlo de início de escrita.

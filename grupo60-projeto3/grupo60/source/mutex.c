@@ -1,4 +1,15 @@
+/**
+ * Número do grupo: 60
+ * João Vale 58159
+ * Sofia Lopes 58175
+ * Eduardo Santos 58185
+*/
+
 #include "mutex.h"
+
+pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t c = PTHREAD_COND_INITIALIZER;
+int writers = 1;
 
 /**
  * Função de controlo de início de escrita.

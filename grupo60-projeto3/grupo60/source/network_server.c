@@ -13,13 +13,14 @@
 #include <netinet/in.h>
 #include <pthread.h>
 
+#include "message.h"
+#include "mutex.h"
 #include "network_server.h"
 #include "sdmessage.pb-c.h"
-#include "message.h"
-#include "table_skel.h"
-#include "table.h"
 #include "stats.h"
-#include "mutex.h"
+#include "table.h"
+#include "table_skel.h"
+
 
 struct table_t *global_table;
 struct statistics_t *stats;

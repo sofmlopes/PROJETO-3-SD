@@ -5,8 +5,8 @@
  * Eduardo Santos 58185
 */
 
-#include "sdmessage.pb-c.h"
 #include "message.h"
+#include "sdmessage.pb-c.h"
 
 /**
  * Função que recebe buffers de qualquer dimensão pela rede,
