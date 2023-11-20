@@ -48,7 +48,10 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Target que define uma dependência do ficheiro objeto sdmessage.pb-c.o relativamente ao ficheiro sdmessage.proto.
-$(OBJ_DIR)/sdmessage.pb-c.o: sdmessage.proto
+$(SRC_DIR)/sdmessage.pb-c.c: sdmessage.proto
+	protoc-c --c_out=. sdmessage.proto
+	mv sdmessage.pb-c.c $(SRC_DIR)
+	mv sdmessage.pb-c.h $(INC_DIR)
 
 include $(wildcard $(DEP_DIR)/*.d)
 	
