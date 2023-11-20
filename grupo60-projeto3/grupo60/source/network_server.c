@@ -69,7 +69,9 @@ int network_server_init(short port){
     return sockfd;
 
 }
-
+/**
+ * Função a ser executada nas threads
+*/
 void *handle_client(void *arg) {
 
     int sockfd = *(int *)arg;
@@ -119,6 +121,7 @@ void *handle_client(void *arg) {
  * caso retorna -1.
  */
 int network_main_loop(int listening_socket, struct table_t *table) {
+
     global_table = table;
 
     stats = stats_create();
@@ -150,9 +153,7 @@ int network_main_loop(int listening_socket, struct table_t *table) {
 
         pthread_detach(thread_id);
         printf("Client connection established\n");
-        //pthread_mutex_lock(&stats_mutex);
         stats->num_clients++;
-        //pthread_mutex_unlock(&stats_mutex);
     }
 
     return 0;

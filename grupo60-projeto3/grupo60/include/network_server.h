@@ -13,6 +13,11 @@ extern struct statistics_t *stats; //variável global que guarda as estatística
  */
 int network_server_init(short port);
 
+/**
+ * Função a ser executada nas threads
+*/
+void *handle_client(void *arg);
+
 /* A função network_main_loop() deve:
  * - Aceitar uma conexão de um cliente;
  * - Receber uma mensagem usando a função network_receive;
